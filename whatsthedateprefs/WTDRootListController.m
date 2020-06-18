@@ -14,20 +14,12 @@
 - (void)setPreferenceValue:(id)value specifier:(PSSpecifier*)specifier {
 	NSString *path = [NSString stringWithFormat:@"/User/Library/Preferences/%@.plist", specifier.properties[@"defaults"]];
 	NSMutableDictionary *settings = [NSMutableDictionary dictionary];
+	[settings addEntriesFromDictionary:[NSDictionary dictionaryWithContentsOfFile:path]];
+	[settings setObject:value forKey:specifier.properties[@"key"]];
+	[settings writeToFile:path atomically:YES];
 	CFStringRef notificationName = (__bridge CFStringRef)specifier.properties[@"PostNotification"];
-	NSString *notifName = [(__bridge NSString *)notificationName stringByReplacingOccurrencesOfString:@"prefs.settingschanged" withString:@".list"];
-	NSString *notiName = [NSString stringWithFormat:@"/var/lib/dpkg/info/%@", notifName];
-	if ([[NSFileManager defaultManager] fileExistsAtPath:notiName]) {
-		[settings addEntriesFromDictionary:[NSDictionary dictionaryWithContentsOfFile:path]];
-		[settings setObject:value forKey:specifier.properties[@"key"]];
-		[settings writeToFile:path atomically:YES];
-		if (notificationName) {
-			CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), notificationName, NULL, NULL, YES);
-		}
-	} else {
-		[settings addEntriesFromDictionary:[NSDictionary dictionaryWithContentsOfFile:path]];
-		[settings setObject:value forKey:specifier.properties[@"PostNotification"]];
-		[settings writeToFile:path atomically:YES];
+	if (notificationName) {
+		CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), notificationName, NULL, NULL, YES);
 	}
 }
 

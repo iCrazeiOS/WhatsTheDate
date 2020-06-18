@@ -1,7 +1,7 @@
 Package: com.icraze.whatsthedate
 Name: WhatsTheDate
 Depends: mobilesubstrate
-Version: 1.0
+Version: 1.1
 Architecture: iphoneos-arm
 Description: Automatically dismiss the "timer status" on the lockscreen after a few seconds.
 Maintainer: iCraze

@@ -9,6 +9,7 @@ static NSTimer *whatsthedateTimer;
 
 /* Preferences */
 static BOOL kEnabled;
+static float kTimeBeforeSwitch;
 
 // Create loadPrefs method
 // We call it from the constructor (end of file)
@@ -17,6 +18,8 @@ static void loadPrefs() {
 	NSMutableDictionary *prefs = [[NSMutableDictionary alloc] initWithContentsOfFile:@"/var/mobile/Library/Preferences/com.icraze.whatsthedateprefs.plist"];
 	// Assign the value of kEnabled to a BOOL, and set the default value to YES
 	kEnabled = [prefs objectForKey:@"kEnabled"] ? [[prefs objectForKey:@"kEnabled"] boolValue] : YES;
+	// Assign the value of kTimeBeforeSwitch to a float, and set the default value to 3.5
+	kTimeBeforeSwitch = [prefs objectForKey:@"kTimeBeforeSwitch"] ? [[prefs objectForKey:@"kTimeBeforeSwitch"] floatValue] : 3.5;
 }
 
 /* Main tweak code */
@@ -44,8 +47,14 @@ static void loadPrefs() {
 	%orig;
 	// Check if the tweak is enabled
 	if (kEnabled) {
-		// Start timer for 3.5 seconds after CSTimerView is displayed
-		whatsthedateTimer = [NSTimer scheduledTimerWithTimeInterval:3.5f target:self selector:@selector(afterTimerViewTimer) userInfo:nil repeats:NO];
+		// Initialise NSMutableDictionary from the preferences plist file
+		NSMutableDictionary *prefs = [[NSMutableDictionary alloc] initWithContentsOfFile:@"/var/mobile/Library/Preferences/com.icraze.whatsthedateprefs.plist"];
+		// Get the value of kTimeBeforeSwitch
+		// For some reason, no notification is sent to the constructor to call loadPrefs when the slider is changed
+		// So we have to read the value from here
+		kTimeBeforeSwitch = [prefs objectForKey:@"kTimeBeforeSwitch"] ? [[prefs objectForKey:@"kTimeBeforeSwitch"] floatValue] : 3.5;
+		// Start timer for (kTimeBeforeSwitch) after CSTimerView is displayed
+		whatsthedateTimer = [NSTimer scheduledTimerWithTimeInterval:kTimeBeforeSwitch target:self selector:@selector(afterTimerViewTimer) userInfo:nil repeats:NO];
 	}
 }
 // Create a new method in the class

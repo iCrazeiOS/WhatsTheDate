@@ -30,6 +30,36 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
+			<string>Time Before Switch (Seconds)</string>
+			<key>footerText</key>
+			<string>Default: 3.5</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSliderCell</string>
+			<key>key</key>
+			<string>kTimeBeforeSwitch</string>
+			<key>defaults</key>
+			<string>com.icraze.whatsthedateprefs</string>
+			<key>PostNotifcation</key>
+			<string>com.icraze.whatsthedateprefs-settingschanged</string>
+			<key>min</key>
+		    <real>0</real>
+			<key>max</key>
+		    <real>10</real>
+			<key>default</key>
+		    <real>3.5</real>
+		    <key>showValue</key>
+		    <true/>
+		    <key>isSegmented</key>
+		    <true/>
+		    <key>segmentCount</key>
+		    <integer>20</integer>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
 			<string>Links</string>
 			<key>footerText</key>
 			<string>© 2020 iCraze</string>

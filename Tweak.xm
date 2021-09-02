@@ -5,127 +5,82 @@
 @interface SBFLockScreenDateSubtitleDateView : UIView
 @end
 
-static NSTimer *whatsthedateTimer;
+static NSTimer *viewSwitchTimer;
+static SBFLockScreenDateSubtitleDateView *dateView;
 
 /* Preferences */
 static BOOL kEnabled;
 static float kTimeBeforeSwitch;
 
-// Create loadPrefs method
-// We call it from the constructor (end of file)
 static void loadPrefs() {
 	// Initialise NSMutableDictionary from the preferences plist file
 	NSMutableDictionary *prefs = [[NSMutableDictionary alloc] initWithContentsOfFile:@"/var/mobile/Library/Preferences/com.icraze.whatsthedateprefs.plist"];
-	// Assign the value of kEnabled to a BOOL, and set the default value to YES
 	kEnabled = [prefs objectForKey:@"kEnabled"] ? [[prefs objectForKey:@"kEnabled"] boolValue] : YES;
-	// Assign the value of kTimeBeforeSwitch to a float, and set the default value to 3.5
-	kTimeBeforeSwitch = [prefs objectForKey:@"kTimeBeforeSwitch"] ? [[prefs objectForKey:@"kTimeBeforeSwitch"] floatValue] : 3.5;
+	kTimeBeforeSwitch = [prefs objectForKey:@"kTimeBeforeSwitch"] ? [[prefs objectForKey:@"kTimeBeforeSwitch"] floatValue] : 3.5f;
 }
 
 /* Main tweak code */
-%hook SBBacklightController
-// This method is called whenever the screen turns on or off
--(void)setBacklightFactorPending:(float)arg1 {
-	// Run the original code first
-	%orig;
-	// Turn the argument (arg1) into a string
-	NSString *checkForAutoLockString = [NSString stringWithFormat: @"%f", arg1];
-	// When the screen turns on, the string contains "1.00000"
-	// When the screen turns of, the string contains "0.00000"
-	// We want to check if the string doesn't contain "1", so we can detect when the screen turned off
-	if (![checkForAutoLockString containsString:@"1"]) {
-		// Reset the timer
-		[whatsthedateTimer invalidate];
-	}
-}
-%end
-
 %hook CSTimerView
-// This method is called when the view is displayed
+// when timer label appears
 -(void)movedToWindow:(id)arg1 {
-	// Run the original code first
 	%orig;
-	// Check if the tweak is enabled
-	if (kEnabled) {
-		// Initialise NSMutableDictionary from the preferences plist file
-		NSMutableDictionary *prefs = [[NSMutableDictionary alloc] initWithContentsOfFile:@"/var/mobile/Library/Preferences/com.icraze.whatsthedateprefs.plist"];
-		// Get the value of kTimeBeforeSwitch
-		// For some reason, no notification is sent to the constructor to call loadPrefs when the slider is changed
-		// So we have to read the value from here
-		kTimeBeforeSwitch = [prefs objectForKey:@"kTimeBeforeSwitch"] ? [[prefs objectForKey:@"kTimeBeforeSwitch"] floatValue] : 3.5;
-		// Start timer for (kTimeBeforeSwitch) after CSTimerView is displayed
-		whatsthedateTimer = [NSTimer scheduledTimerWithTimeInterval:kTimeBeforeSwitch target:self selector:@selector(afterTimerViewTimer) userInfo:nil repeats:NO];
-	}
+	if (!kEnabled) return;
+
+	// the slider for kTimeBeforeSwitch doesn't fire a notif so we will reload manually just in case
+	loadPrefs();
+
+	// set up timer to switch to date view after kTimeBeforeSwitch
+	viewSwitchTimer = [NSTimer scheduledTimerWithTimeInterval:kTimeBeforeSwitch target:self selector:@selector(viewSwitchTimer_fire) userInfo:nil repeats:NO];
 }
-// Create a new method in the class
+
+// add a new method to the class (NSNotification callback)
 %new
-// When the timer ends
--(void)afterTimerViewTimer {
-	// Check if the tweak is enabled
-	if (kEnabled) {
-		// Start animating the view to disappear
-		// I have chosen to make the animation take 0.5 seconds,
-		// as it seems very similar to the timing Apple uses for the Barrtery Percentage,
-		// when you unlock the device whilst charging
-		[UIView animateWithDuration:0.5f animations:^{
-				// Set the alpha of the view to 0
-				self.alpha = 0.0f;
-			// Once the animation is complete
-			} completion:^(BOOL finished){
-				// Erase the timer from memory
-				whatsthedateTimer = nil;
-				// Send NSNotification to SBFLockScreenDateSubtitleDateView
-				NSNotification *alrmaShowDateNotification = [NSNotification notificationWithName:@"alrmaShowDateNotification" object:self userInfo:nil];
-				[[NSNotificationCenter defaultCenter] postNotification:alrmaShowDateNotification];
-			}
-		];
-	}
+-(void)viewSwitchTimer_fire {
+	if (!kEnabled) return;
+
+	// fade out timer label
+	[UIView animateWithDuration:0.5f animations:^{
+		self.alpha = 0.0f;
+	} completion:^(BOOL finished) {
+		// fade in date view
+		[dateView whatsthedate_fadeIn];
+	}];
 }
 %end
 
 %hook SBFLockScreenDateSubtitleDateView
-// This method is called when the view is displayed
 -(void)didMoveToWindow {
-	// Run the original code first
 	%orig;
-	// Add an NSNotification observer
-	// This detects the notification from CSTimerView
-	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(whatsthedateShowDateText) name:@"alrmaShowDateNotification" object:nil];
+	dateView = self;
 }
-// Create a new method in the class
+
+// add a new method to the class
 %new
-// When the NSNotification is received
--(void)whatsthedateShowDateText {
-	// Check if the tweak is enabled
-	if (kEnabled) {
-		// Start animating the view to disappear
-		// I have chosen to make the animation take 0.5 seconds,
-		// as it seems very similar to the timing Apple uses for the Barrtery Percentage,
-		// when you unlock the device whilst charging
-		[UIView animateWithDuration:0.5f animations:^{
-				// Set the alpha of the view to 1
-				self.alpha = 1.0f;
-			} completion:^(BOOL finished){}
-		];
+-(void)whatsthedate_fadeIn {
+	[UIView animateWithDuration:0.5f animations:^{
+		self.alpha = 1.0f;
+	}];
+}
+%end
+
+%hook SBBacklightController
+// this method is called whenever the screen turns on or off
+-(void)setBacklightFactorPending:(float)arg1 {
+	%orig;
+
+	// if screen turning off, reset the timer
+	if (arg1 == 0) {
+		[viewSwitchTimer invalidate];
+		viewSwitchTimer = nil;
 	}
 }
 %end
 
-/* Constructor */
-// This code runs when the tweak is injected into a process
-// In this case, we are just injecting into SpringBoard
 %ctor {
-	// Call the loadPrefs method
+	// register prefs
 	loadPrefs();
-	// Add a CFNotification obsever
 	CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, (CFNotificationCallback)loadPrefs, CFSTR("com.icraze.whatsthedateprefs.settingschanged"), NULL, CFNotificationSuspensionBehaviorCoalesce);
 
-	// Check if the tweak is not enabled
-	if (!kEnabled) {
-		// Don't run anymore code past here
-		return;
-	}
-
-	// Run the tweak
-	%init;
+	// load hooks
+	if (kEnabled) %init;
 }
